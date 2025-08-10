@@ -13,7 +13,7 @@ use near_primitives::{
 };
 use near_sdk::{json_types::U128, near, serde_json, AccountId};
 use templar_common::asset::{FromAsset, FungibleAsset, ToAsset};
-
+use super::{QuoteOutput, Swap};
 #[async_trait::async_trait]
 pub trait Swap {
     /// Quotes the amount of `from` token to `to` token.
@@ -62,9 +62,16 @@ pub struct RheaSwap {
 }
 
 impl RheaSwap {
-    pub fn new(contract: AccountId, client: JsonRpcClient, signer: Arc<InMemorySigner>) -> Self {
+    #[allow(
+        clippy::unwrap_used,
+        reason = "We know the contract IDs are valid NEAR account IDs."
+    )]
+    pub fn new(network: Network, client: JsonRpcClient, signer: Arc<InMemorySigner>) -> Self {
         Self {
-            contract,
+            contract: match network {
+                Network::Mainnet => "dclv2.ref-labs.near".parse().unwrap(),
+                Network::Testnet => "dclv2.ref-dev.testnet".parse().unwrap(),
+            },
             client,
             signer,
         }
@@ -95,9 +102,15 @@ impl QuoteRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[near(serializers = [json, borsh])]
-struct QuoteResponse {
+pub struct QuoteResponse {
     amount: U128,
     tag: String,
+}
+
+impl QuoteOutput for QuoteResponse {
+    fn to_u128(&self) -> U128 {
+        self.amount
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -128,12 +141,15 @@ impl SwapRequestMsg {
     reason = "Rhea was mostly implemented for testing purposes, and don't expect it to be used in production."
 )]
 impl Swap for RheaSwap {
+    type QuoteOutput = QuoteResponse;
+    type SwapOutput = FinalExecutionStatus;
+
     async fn quote(
         &self,
         from: FungibleAsset<FromAsset>,
         to: FungibleAsset<ToAsset>,
         amount: U128,
-    ) -> RpcResult<U128> {
+    ) -> RpcResult<Self::QuoteOutput> {
         let response: QuoteResponse = view(
             &self.client,
             self.contract.clone(),
@@ -147,7 +163,7 @@ impl Swap for RheaSwap {
             ),
         )
         .await?;
-        Ok(response.amount)
+        Ok(response)
     }
 
     async fn swap(
@@ -155,7 +171,7 @@ impl Swap for RheaSwap {
         from: FungibleAsset<FromAsset>,
         to: FungibleAsset<ToAsset>,
         amount: U128,
-    ) -> RpcResult<FinalExecutionStatus> {
+    ) -> RpcResult<Self::SwapOutput> {
         let msg = SwapRequestMsg::new(
             &from
                 .clone()

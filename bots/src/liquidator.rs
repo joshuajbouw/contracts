@@ -1,3 +1,4 @@
+use crate::swap::QuoteOutput;
 use crate::{
     near::{get_access_key_data, send_tx, view, RpcError},
     swap::{Swap, SwapType},
@@ -232,24 +233,27 @@ impl<S: Swap> Liquidator<S> {
 
         let available = self.get_asset_balance(&self.from_asset).await?;
 
-        if available < swap_amount {
-            warn!("Insufficient asset balance for liquidation: {available:?} < {swap_amount:?}");
+        if available < swap_amount.to_u128() {
+            warn!(
+                "Insufficient asset balance for liquidation: {available:?} < {:?}",
+                swap_amount.to_u128()
+            );
             return Ok(());
         }
 
         // Implement this function based on your liquidation strategy
         if !self
-            .should_liquidate(swap_amount, liquidation_amount)
+            .should_liquidate(&swap_amount, liquidation_amount)
             .await?
         {
             info!("Skipping liquidation due to insufficient conditions");
             return Ok(());
         }
 
-        if swap_amount > 0.into() {
+        if swap_amount.to_u128() > 0.into() {
             match self
                 .swap
-                .swap(self.from_asset.as_ref().clone(), to_asset, swap_amount)
+                .swap(self.from_asset.as_ref().clone(), to_asset, swap_amount.to_u128())
                 .await
             {
                 Ok(_) => {
@@ -464,10 +468,10 @@ impl<S: Swap> Liquidator<S> {
         Ok(())
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self, swap_amount), level = "debug", fields(swap_amount = ?swap_amount.to_u128()))]
     pub async fn should_liquidate(
         &self,
-        swap_amount: U128,
+        swap_amount: &S::QuoteOutput,
         liquidation_amount: U128,
     ) -> LiquidatorResult<bool> {
         // TODO: Calculate optimal liquidation amount
