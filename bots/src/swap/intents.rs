@@ -24,7 +24,7 @@ use super::{QuoteOutput, Swap};
 #[near(serializers = [json, borsh])]
 pub struct IntentsQuoteRequest {
     pub id: String,
-    pub jsonrpc: String,
+    pub json_rpc: String,
     pub method: String,
     pub params: Vec<IntentsQuoteParams>,
 }
@@ -33,7 +33,7 @@ impl IntentsQuoteRequest {
     pub fn new(id: String, params: IntentsQuoteParams) -> Self {
         IntentsQuoteRequest {
             id,
-            jsonrpc: "2.0".to_string(),
+            json_rpc: "2.0".to_string(),
             method: "quote".to_string(),
             params: vec![params],
         }
@@ -71,7 +71,7 @@ impl QuoteOutput for IntentsQuoteResponse {
 #[near(serializers = [json, borsh])]
 pub struct PublishIntentsRequest {
     pub id: String,
-    pub jsonrpc: String,
+    pub json_rpc: String,
     pub method: String,
     pub params: Vec<PublishIntentsParams>,
 }
@@ -278,7 +278,7 @@ fn make_publish_request(
 
     Ok(PublishIntentsRequest {
         id: "dontcare".to_string(),
-        jsonrpc: "2.0".to_string(),
+        json_rpc: "2.0".to_string(),
         method: "publish_intents".to_string(),
         params: vec![PublishIntentsParams {
             signed_datas: vec![signed_data],
