@@ -14,6 +14,7 @@ use templar_bots::{
     near::{view, RpcResult},
     swap::{IntentsSwap, RheaSwap, Swap, SwapType},
 };
+use templar_common::asset::{FromAsset, FungibleAsset};
 use tokio::time::sleep;
 use tracing::{info, instrument};
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -73,11 +74,11 @@ pub async fn list_all_deployments(
     Ok(all_markets)
 }
 
-#[instrument(skip(client, asset, swap), level = "debug")]
+#[instrument(skip(client, from_asset, swap), level = "debug")]
 async fn run_bot<S: Swap>(
     client: JsonRpcClient,
     signer: Arc<InMemorySigner>,
-    asset: Arc<AccountId>,
+    from_asset: Arc<FungibleAsset<FromAsset>>,
     swap: Arc<S>,
     args: &Args,
 ) -> LiquidatorResult {
@@ -101,7 +102,7 @@ async fn run_bot<S: Swap>(
                         // All clones are Arcs so this is cheap
                         client.clone(),
                         signer.clone(),
-                        asset.clone(),
+                        from_asset.clone(),
                         // This is the only true clone
                         market.clone(),
                         swap.clone(),

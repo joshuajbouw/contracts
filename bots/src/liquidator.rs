@@ -253,7 +253,11 @@ impl<S: Swap> Liquidator<S> {
         if swap_amount.to_u128() > 0.into() {
             match self
                 .swap
-                .swap(self.from_asset.as_ref().clone(), to_asset, swap_amount.to_u128())
+                .swap(
+                    self.from_asset.as_ref().clone(),
+                    to_asset,
+                    swap_amount.to_u128(),
+                )
                 .await
             {
                 Ok(_) => {

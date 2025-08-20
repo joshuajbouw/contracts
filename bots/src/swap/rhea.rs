@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use super::{QuoteOutput, Swap};
 use crate::{
     near::{get_access_key_data, send_tx, view, RpcResult},
     Network,
 };
-use clap::ValueEnum;
 use near_crypto::InMemorySigner;
 use near_jsonrpc_client::JsonRpcClient;
 use near_primitives::{
@@ -13,46 +13,6 @@ use near_primitives::{
 };
 use near_sdk::{json_types::U128, near, serde_json, AccountId};
 use templar_common::asset::{FromAsset, FungibleAsset, ToAsset};
-use super::{QuoteOutput, Swap};
-#[async_trait::async_trait]
-pub trait Swap {
-    /// Quotes the amount of `from` token to `to` token.
-    async fn quote(
-        &self,
-        from: FungibleAsset<FromAsset>,
-        to: FungibleAsset<ToAsset>,
-        amount: U128,
-    ) -> RpcResult<U128>;
-
-    /// Swaps `from` token to `to` token.
-    async fn swap(
-        &self,
-        from: FungibleAsset<FromAsset>,
-        to: FungibleAsset<ToAsset>,
-        amount: U128,
-    ) -> RpcResult<FinalExecutionStatus>;
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum SwapType {
-    RheaSwap,
-}
-
-impl SwapType {
-    #[must_use]
-    #[allow(
-        clippy::unwrap_used,
-        reason = "We know the contract IDs are valid NEAR account IDs."
-    )]
-    pub fn account_id(self, network: Network) -> AccountId {
-        match self {
-            SwapType::RheaSwap => match network {
-                Network::Mainnet => "dclv2.ref-labs.near".parse().unwrap(),
-                Network::Testnet => "dclv2.ref-dev.testnet".parse().unwrap(),
-            },
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct RheaSwap {

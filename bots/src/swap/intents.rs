@@ -4,6 +4,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use crate::{
+    near::{get_access_key_data, RpcError, RpcResult},
+    Network,
+};
 use near_crypto::InMemorySigner;
 use near_jsonrpc_client::JsonRpcClient;
 use near_sdk::{
@@ -12,11 +16,7 @@ use near_sdk::{
     serde_json::{self, Value},
     AccountId,
 };
-
-use crate::{
-    near::{get_access_key_data, RpcError, RpcResult},
-    Network,
-};
+use templar_common::asset::{FromAsset, FungibleAsset, ToAsset};
 
 use super::{QuoteOutput, Swap};
 
@@ -149,16 +149,16 @@ impl Swap for IntentsSwap {
 
     async fn quote(
         &self,
-        from: &AccountId,
-        to: &AccountId,
+        from: FungibleAsset<FromAsset>,
+        to: FungibleAsset<ToAsset>,
         amount: U128,
     ) -> RpcResult<Self::QuoteOutput> {
         let id = format!("quote-{from}-{to}-{amount:?}");
         let quote_request = IntentsQuoteRequest::new(
             id,
             IntentsQuoteParams {
-                defuse_asset_identifier_in: from.clone(),
-                defuse_asset_identifier_out: to.clone(),
+                defuse_asset_identifier_in: from.contract_id().clone(),
+                defuse_asset_identifier_out: to.contract_id().clone(),
                 exact_amount_in: amount,
                 min_deadline_ms: 60000,
                 wait_ms: 500,
@@ -185,8 +185,8 @@ impl Swap for IntentsSwap {
 
     async fn swap(
         &self,
-        from: &AccountId,
-        to: &AccountId,
+        from: FungibleAsset<FromAsset>,
+        to: FungibleAsset<ToAsset>,
         amount: U128,
     ) -> RpcResult<Self::SwapOutput> {
         let (nonce, _block_hash) = get_access_key_data(&self.rpc_client, &self.signer).await?;

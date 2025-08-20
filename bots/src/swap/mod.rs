@@ -1,5 +1,5 @@
 use clap::ValueEnum;
-use near_sdk::{json_types::U128, AccountId};
+use near_sdk::json_types::U128;
 
 use crate::near::RpcResult;
 
@@ -8,6 +8,7 @@ mod rhea;
 
 pub use intents::*;
 pub use rhea::*;
+use templar_common::asset::{FromAsset, FungibleAsset, ToAsset};
 
 pub trait QuoteOutput: Send + Sync {
     /// Converts the quote output to a `U128` value.
@@ -22,16 +23,16 @@ pub trait Swap {
     /// Quotes the amount of `from` token to `to` token.
     async fn quote(
         &self,
-        from: &AccountId,
-        to: &AccountId,
+        from: FungibleAsset<FromAsset>,
+        to: FungibleAsset<ToAsset>,
         amount: U128,
     ) -> RpcResult<Self::QuoteOutput>;
 
     /// Swaps `from` token to `to` token.
     async fn swap(
         &self,
-        from: &AccountId,
-        to: &AccountId,
+        from: FungibleAsset<FromAsset>,
+        to: FungibleAsset<ToAsset>,
         amount: U128,
     ) -> RpcResult<Self::SwapOutput>;
 }
