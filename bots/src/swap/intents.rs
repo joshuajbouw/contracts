@@ -69,7 +69,7 @@ impl QuoteOutput for IntentsQuoteResponse {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[near(serializers = [json, borsh])]
 pub struct PublishIntentsRequest {
     pub id: String,
@@ -78,7 +78,7 @@ pub struct PublishIntentsRequest {
     pub params: Vec<PublishIntentsParams>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[near(serializers = [json, borsh])]
 pub struct PublishIntentsParams {
     // depending on the method publish_intent or publish_intents argument is an array or single
@@ -88,37 +88,51 @@ pub struct PublishIntentsParams {
     pub quote_hashes: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[near(serializers = [json, borsh])]
 pub struct SignedData {
+    /// Content signature standard NEP413
     pub standard: String,
+    /// Payload that was signed
     pub payload: SwapMessage,
+    /// Signer's public key
     pub public_key: String,
+    /// Signature of the payload
     pub signature: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[near(serializers = [json, borsh])]
 pub struct SwapMessage {
-    pub message: String,
+    /// The message to be sent, serialized as JSON
+    pub message: IntentMessage,
+    /// Nonce for the message, used to prevent replay attacks
     pub nonce: u64,
+    /// Near intents contract address (`intents.near`)
     pub recipient: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[near(serializers = [json, borsh])]
 pub struct IntentMessage {
+    /// Deadline until which this intent is valid, ISO-8601 format
     deadline: u128,
+    /// Array of intents to be executed
     intents: Intents,
+    /// Signer's account ID in Near Intents
     signer_id: AccountId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[near(serializers = [json, borsh])]
 pub struct Intents {
+    /// Intent type
     intent: String,
+    /// Token differences to be applied in the intent
     diff: HashMap<String, String>,
+    /// Referral ID for the intent, if any
     referral: Option<String>,
+    /// Optional memo for the intent, can be used for additional information
     memo: Option<String>,
 }
 
@@ -190,7 +204,7 @@ impl Swap for IntentsSwap {
             build_intent_message(&quote, self.signer.account_id.clone(), None, None)?;
 
         let publish_request =
-            make_publish_request(&self.signer, &intent_message, nonce, vec![quote.quote_hash])?;
+            make_publish_request(&self.signer, intent_message, nonce, vec![quote.quote_hash])?;
 
         let publish_response =
             post_response(&self.http_client, self.solver_url.clone(), &publish_request).await?;
@@ -241,14 +255,12 @@ fn build_intent_message(
 
 fn make_publish_request(
     signer: &InMemorySigner,
-    intent_message: &IntentMessage,
+    intent_message: IntentMessage,
     nonce: u64,
     quote_hashes: Vec<String>,
 ) -> RpcResult<PublishIntentsRequest> {
-    let message_str = serde_json::to_string(intent_message)?;
-
     let payload = SwapMessage {
-        message: message_str,
+        message: intent_message,
         nonce,
         recipient: "intents.near".to_string(),
     };
@@ -276,11 +288,11 @@ fn make_publish_request(
 async fn post_response<T: Serialize + ?Sized, R: DeserializeOwned>(
     http_client: &reqwest::Client,
     solver_url: String,
-    publish_request: &T,
+    request: &T,
 ) -> RpcResult<R> {
     let response = http_client
         .post(solver_url)
-        .json(publish_request)
+        .json(request)
         .send()
         .await
         .map_err(RpcError::SolverRequestError)?;
