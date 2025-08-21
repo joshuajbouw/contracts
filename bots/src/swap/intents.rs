@@ -10,6 +10,8 @@ use crate::{
 };
 use near_crypto::InMemorySigner;
 use near_jsonrpc_client::JsonRpcClient;
+use near_sdk::serde::de::DeserializeOwned;
+use near_sdk::serde::Serialize;
 use near_sdk::{
     json_types::U128,
     near,
@@ -165,16 +167,8 @@ impl Swap for IntentsSwap {
             },
         );
 
-        let quote_response: IntentsQuoteResponse = self
-            .http_client
-            .post(self.solver_url.clone())
-            .json(&quote_request)
-            .send()
-            .await
-            .map_err(RpcError::SolverRequestError)?
-            .json()
-            .await
-            .map_err(RpcError::SolverResponseDeserialization)?;
+        let quote_response: IntentsQuoteResponse =
+            post_response(&self.http_client, self.solver_url.clone(), &quote_request).await?;
 
         if quote_response.quote_hash.is_empty() {
             Err(RpcError::NoQuoteHashReceived)
@@ -198,16 +192,8 @@ impl Swap for IntentsSwap {
         let publish_request =
             make_publish_request(&self.signer, &intent_message, nonce, vec![quote.quote_hash])?;
 
-        let publish_response = self
-            .http_client
-            .post(self.solver_url.clone())
-            .json(&publish_request)
-            .send()
-            .await
-            .map_err(RpcError::SolverRequestError)?
-            .json()
-            .await
-            .map_err(RpcError::SolverResponseDeserialization)?;
+        let publish_response =
+            post_response(&self.http_client, self.solver_url.clone(), &publish_request).await?;
 
         Ok(publish_response)
     }
@@ -285,4 +271,24 @@ fn make_publish_request(
             quote_hashes,
         }],
     })
+}
+
+async fn post_response<T: Serialize + ?Sized, R: DeserializeOwned>(
+    http_client: &reqwest::Client,
+    solver_url: String,
+    publish_request: &T,
+) -> RpcResult<R> {
+    let response = http_client
+        .post(solver_url)
+        .json(publish_request)
+        .send()
+        .await
+        .map_err(RpcError::SolverRequestError)?;
+
+    let json_response = response
+        .json()
+        .await
+        .map_err(RpcError::SolverResponseDeserialization)?;
+
+    Ok(json_response)
 }
